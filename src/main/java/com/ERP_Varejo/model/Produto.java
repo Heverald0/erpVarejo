@@ -13,11 +13,16 @@ public class Produto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(unique = true)
-    private String codigoBarras;
+    @Column(unique = true, nullable = false)
+    private String codigoSerial;
 
+    @Column(nullable = false)
     private String nome;
+
     private Integer quantidadeEstoque;
+
     private BigDecimal precoCusto;
+
+    @Column(nullable = false)
     private BigDecimal precoVenda;
 }
