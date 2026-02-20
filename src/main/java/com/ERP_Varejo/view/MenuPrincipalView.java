@@ -7,53 +7,84 @@ import java.awt.*;
 public class MenuPrincipalView extends JFrame {
 
     public MenuPrincipalView(Usuario usuario, LoginView loginView) {
-        setTitle("ERP CasadosFogões - Dashboard");
-        setSize(900, 600);
+        setTitle("ERP CasadosFogões - Gestão");
+        setSize(1000, 650);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-
-        // Barra Superior de Usuário
-        JPanel topBar = new JPanel(new BorderLayout());
-        topBar.setBackground(new Color(52, 73, 94));
-        topBar.setPreferredSize(new Dimension(900, 50));
-
-        JLabel userLabel = new JLabel("  Usuário: " + usuario.getNome() + " (" + usuario.getCargo() + ")");
-        userLabel.setForeground(Color.WHITE);
-        userLabel.setFont(new Font("Arial", Font.ITALIC, 14));
         
-        JButton btnLogout = new JButton("Sair / Trocar Usuário");
+        // --- BARRA SUPERIOR (User & Logout) ---
+        JPanel topBar = new JPanel(new BorderLayout());
+        topBar.setBackground(new Color(26, 37, 47));
+        topBar.setPreferredSize(new Dimension(1000, 60));
+        topBar.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+
+        JLabel lblBemVindo = new JLabel("Operador: " + usuario.getNome() + " | Perfil: " + usuario.getCargo());
+        lblBemVindo.setForeground(Color.WHITE);
+        lblBemVindo.setFont(new Font("Segoe UI", Font.BOLD, 14));
+
+        JButton btnLogout = new JButton("Trocar Usuário (Sair)");
+        btnLogout.setFocusPainted(false);
         btnLogout.addActionListener(e -> {
             this.dispose();
-            loginView.exibir(); // Retorna para a tela de login
+            loginView.exibir(); // Retorna ao Login
         });
 
-        topBar.add(userLabel, BorderLayout.WEST);
+        topBar.add(lblBemVindo, BorderLayout.WEST);
         topBar.add(btnLogout, BorderLayout.EAST);
 
-        // Painel Central de Ações (Estilo Cards)
-        JPanel cardsPanel = new JPanel(new GridLayout(2, 2, 15, 15));
-        cardsPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-
-        cardsPanel.add(criarBotaoMenu("PDV - Vendas", new Color(46, 204, 113), true));
-        cardsPanel.add(criarBotaoMenu("Produtos", new Color(241, 196, 15), true));
+        // --- PAINEL CENTRAL (Dashboard & Ações) ---
+        JPanel mainContent = new JPanel(new BorderLayout());
         
-        // Funções Administrativas
+        // 1. Área de "Cards" com Informações Rápidas
+        JPanel pnlDashboard = new JPanel(new GridLayout(1, 3, 20, 0));
+        pnlDashboard.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        
+        pnlDashboard.add(criarCardInfo("VENDAS HOJE", "R$ 0,00", new Color(46, 204, 113)));
+        pnlDashboard.add(criarCardInfo("ITENS NO ESTOQUE", "Consultar", new Color(52, 152, 219)));
+        pnlDashboard.add(criarCardInfo("ALERTAS", "Nenhum", new Color(231, 76, 60)));
+
+        // 2. Área de Botões de Ação
+        JPanel pnlAcoes = new JPanel(new GridLayout(2, 2, 15, 15));
+        pnlAcoes.setBorder(BorderFactory.createEmptyBorder(0, 20, 20, 20));
+
+        pnlAcoes.add(configurarBotaoMenu("CAIXA (F1)", true));
+        pnlAcoes.add(configurarBotaoMenu("ESTOQUE", true));
+        
+        // Bloqueio administrativo
         boolean isAdmin = usuario.getCargo() == Usuario.Perfil.ADMIN;
-        cardsPanel.add(criarBotaoMenu("Relatórios", new Color(231, 76, 60), isAdmin));
-        cardsPanel.add(criarBotaoMenu("Configurações", new Color(149, 165, 166), isAdmin));
+        pnlAcoes.add(configurarBotaoMenu("RELATÓRIOS", isAdmin));
+        pnlAcoes.add(configurarBotaoMenu("CONFIGURAÇÕES", isAdmin));
+
+        mainContent.add(pnlDashboard, BorderLayout.NORTH);
+        mainContent.add(pnlAcoes, BorderLayout.CENTER);
 
         add(topBar, BorderLayout.NORTH);
-        add(cardsPanel, BorderLayout.CENTER);
+        add(mainContent, BorderLayout.CENTER);
     }
 
-    private JButton criarBotaoMenu(String texto, Color cor, boolean habilitado) {
+    private JPanel criarCardInfo(String titulo, String valor, Color cor) {
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(cor);
+        card.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
+        
+        JLabel lblT = new JLabel(titulo, SwingConstants.CENTER);
+        lblT.setForeground(Color.WHITE);
+        JLabel lblV = new JLabel(valor, SwingConstants.CENTER);
+        lblV.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        lblV.setForeground(Color.WHITE);
+
+        card.add(lblT, BorderLayout.NORTH);
+        card.add(lblV, BorderLayout.CENTER);
+        return card;
+    }
+
+    private JButton configurarBotaoMenu(String texto, boolean habilitado) {
         JButton btn = new JButton(texto);
-        btn.setFont(new Font("Arial", Font.BOLD, 18));
-        btn.setBackground(habilitado ? cor : Color.LIGHT_GRAY);
-        btn.setForeground(Color.WHITE);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 18));
         btn.setEnabled(habilitado);
-        btn.setFocusPainted(false);
-        if (!habilitado) btn.setToolTipText("Acesso Administrativo");
+        if (!habilitado) {
+            btn.setToolTipText("Acesso exclusivo para administradores.");
+        }
         return btn;
     }
 }
