@@ -1,55 +1,64 @@
 package com.ERP_Varejo;
 
 import com.ERP_Varejo.model.Usuario;
-import com.ERP_Varejo.model.Produto;
-import com.ERP_Varejo.model.Venda;
-import com.ERP_Varejo.model.ItemVenda;
 import com.ERP_Varejo.service.UsuarioService;
-import com.ERP_Varejo.service.ProdutoService;
-import com.ERP_Varejo.service.VendaService;
+import com.ERP_Varejo.view.LoginView;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.annotation.Bean;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
+
+import javax.swing.*;
 
 @SpringBootApplication
 public class ErpApplication {
 
     public static void main(String[] args) {
-        // Inicializa o Spring Boot e o servidor embutido (Tomcat) na porta 8080
-        SpringApplication.run(ErpApplication.class, args);
+        // Configuração necessária para rodar interfaces gráficas com Spring Boot
+        SpringApplicationBuilder builder = new SpringApplicationBuilder(ErpApplication.class);
+        builder.headless(false); // Desativa o modo "sem cabeça" para permitir janelas
+        builder.run(args);
     }
 
     /**
-     * BLOCO ATIVO: Configuração Inicial de Segurança
-     * Este método valida se o administrador existe e garante o uso de BCrypt.
+     * BLOCO ATIVO: Configuração de Segurança e Interface
      */
     @Bean
-    public CommandLineRunner setupAdmin(UsuarioService usuarioService) {
+    public CommandLineRunner setupSecurity(UsuarioService usuarioService, LoginView loginView) {
         return (args) -> {
-            System.out.println("\n=== [FASE 1] VERIFICANDO SEGURANÇA DO SISTEMA ===");
+            System.out.println("\n=== [FASE 1] CONFIGURANDO AMBIENTE DE ACESSO ===");
             
-            // Valida se o usuário 'admin' já possui hash BCrypt no banco
+            // 1. Criar Admin se não existir
             if (usuarioService.autenticar("admin", "admin123") == null) {
-                System.out.println("Criando usuário administrador padrão com senha criptografada...");
-                
                 Usuario admin = new Usuario();
                 admin.setNome("Heveraldo Admin");
                 admin.setLogin("admin");
-                admin.setSenha("admin123"); // O UsuarioService aplicará o BCrypt automaticamente
-                
-                
+                admin.setSenha("admin123");
+                admin.setCargo(Usuario.Perfil.ADMIN);
                 usuarioService.salvar(admin);
-                System.out.println("[OK] Admin criado. Verifique o hash no pgAdmin na tabela 'usuarios'.");
-            } else {
-                System.out.println("[OK] Acesso administrativo validado e ativo.");
+                System.out.println("[OK] Usuário ADMINISTRADOR pronto.");
             }
+
+            // 2. Criar Operador para teste de travas de segurança
+            if (usuarioService.autenticar("caixa1", "senha123") == null) {
+                Usuario operador = new Usuario();
+                operador.setNome("Operador de Caixa");
+                operador.setLogin("caixa1");
+                operador.setSenha("senha123");
+                operador.setCargo(Usuario.Perfil.OPERADOR);
+                usuarioService.salvar(operador);
+                System.out.println("[OK] Usuário OPERADOR pronto para teste de permissões.");
+            }
+
+            // 3. Iniciar Interface Gráfica
+            SwingUtilities.invokeLater(() -> loginView.exibir());
+            
             System.out.println("================================================\n");
         };
     }
+    
+}
 
     /* * ========================================================================
      * BLOCO COMENTADO: MANUAL DE INSTRUÇÕES E TESTES DE INTEGRIDADE
@@ -99,4 +108,4 @@ public class ErpApplication {
         };
     }
     */
-} // Chave final que fecha a classe ErpApplication
+ // Chave final que fecha a classe ErpApplication
