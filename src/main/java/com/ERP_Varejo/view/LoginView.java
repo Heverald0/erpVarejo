@@ -17,60 +17,75 @@ public class LoginView extends JFrame {
     private JPasswordField txtSenha;
 
     public void exibir() {
-        
-        setTitle("ERP CasadosFogões - Login");
-        setSize(400, 250);
+        // Aplica um tema mais moderno se disponível
+        try {
+            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+        } catch (Exception e) { /* Usa o padrão */ }
+
+        setTitle("Acesso ao Sistema - ERP CasadosFogões");
+        setSize(400, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        setResizable(false);
 
-        JPanel panel = new JPanel(new GridBagLayout());
+        // Painel com Degradê ou Cor Sólida de Mercado (Azul Escuro/Slate)
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(new Color(44, 62, 80));
+
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setOpaque(false);
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.insets = new Insets(5, 5, 5, 5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
+        JLabel lblTitle = new JLabel("LOGIN", SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Arial", Font.BOLD, 24));
+        lblTitle.setForeground(Color.WHITE);
+        mainPanel.add(lblTitle, BorderLayout.NORTH);
+
         gbc.gridx = 0; gbc.gridy = 0;
-        panel.add(new JLabel("Usuário:"), gbc);
+        JLabel l1 = new JLabel("Usuário:"); l1.setForeground(Color.WHITE);
+        formPanel.add(l1, gbc);
+        
         gbc.gridx = 1;
         txtLogin = new JTextField(15);
-        panel.add(txtLogin, gbc);
+        formPanel.add(txtLogin, gbc);
 
         gbc.gridx = 0; gbc.gridy = 1;
-        panel.add(new JLabel("Senha:"), gbc);
+        JLabel l2 = new JLabel("Senha:"); l2.setForeground(Color.WHITE);
+        formPanel.add(l2, gbc);
+        
         gbc.gridx = 1;
         txtSenha = new JPasswordField(15);
-        panel.add(txtSenha, gbc);
+        formPanel.add(txtSenha, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 2;
-        gbc.gridwidth = 2;
-        JButton btnEntrar = new JButton("Acessar Sistema");
-        btnEntrar.setBackground(new Color(41, 128, 185));
+        JButton btnEntrar = new JButton("ENTRAR");
+        btnEntrar.setBackground(new Color(52, 152, 219));
         btnEntrar.setForeground(Color.WHITE);
-        btnEntrar.setFont(new Font("Arial", Font.BOLD, 14));
-        
+        btnEntrar.setFocusPainted(false);
         btnEntrar.addActionListener(e -> realizarLogin());
-        panel.add(btnEntrar, gbc);
 
-        add(panel);
+        mainPanel.add(formPanel, BorderLayout.CENTER);
+        mainPanel.add(btnEntrar, BorderLayout.SOUTH);
+
+        add(mainPanel);
         setVisible(true);
     }
 
     private void realizarLogin() {
         String login = txtLogin.getText();
         String senha = new String(txtSenha.getPassword());
+        Usuario auth = usuarioService.autenticar(login, senha); //
 
-        Usuario usuario = usuarioService.autenticar(login, senha);
-
-        if (usuario != null) {
-            JOptionPane.showMessageDialog(this, "Bem-vindo, " + usuario.getNome() + "!");
+        if (auth != null) {
             this.dispose();
-            
-            SwingUtilities.invokeLater(() -> {
-                MenuPrincipalView menu = new MenuPrincipalView(usuario);
-                menu.setVisible(true);
-            });
+            SwingUtilities.invokeLater(() -> new MenuPrincipalView(auth, this).setVisible(true));
         } else {
-            JOptionPane.showMessageDialog(this, "Usuário ou senha incorretos!", "Erro de Acesso", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Acesso Negado!", "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 }

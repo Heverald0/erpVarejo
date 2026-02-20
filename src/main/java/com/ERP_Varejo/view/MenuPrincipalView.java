@@ -6,52 +6,54 @@ import java.awt.*;
 
 public class MenuPrincipalView extends JFrame {
 
-    public MenuPrincipalView(Usuario usuario) {
-        setTitle("ERP CasadosFogões - Menu Principal");
-        setSize(800, 600);
+    public MenuPrincipalView(Usuario usuario, LoginView loginView) {
+        setTitle("ERP CasadosFogões - Dashboard");
+        setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+
+        // Barra Superior de Usuário
+        JPanel topBar = new JPanel(new BorderLayout());
+        topBar.setBackground(new Color(52, 73, 94));
+        topBar.setPreferredSize(new Dimension(900, 50));
+
+        JLabel userLabel = new JLabel("  Usuário: " + usuario.getNome() + " (" + usuario.getCargo() + ")");
+        userLabel.setForeground(Color.WHITE);
+        userLabel.setFont(new Font("Arial", Font.ITALIC, 14));
         
-        setLayout(new BorderLayout());
-        JPanel pnlBotoes = new JPanel(new GridLayout(2, 2, 20, 20));
-        pnlBotoes.setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50));
+        JButton btnLogout = new JButton("Sair / Trocar Usuário");
+        btnLogout.addActionListener(e -> {
+            this.dispose();
+            loginView.exibir(); // Retorna para a tela de login
+        });
 
-        JButton btnVendas = new JButton("PDV - Realizar Venda");
-        JButton btnProdutos = new JButton("Estoque / Produtos");
-        JButton btnRelatorios = new JButton("Relatórios Financeiros");
-        JButton btnConfig = new JButton("Gestão de Usuários");
+        topBar.add(userLabel, BorderLayout.WEST);
+        topBar.add(btnLogout, BorderLayout.EAST);
 
-        Font fonteBotao = new Font("Arial", Font.BOLD, 16);
-        btnVendas.setFont(fonteBotao);
-        btnProdutos.setFont(fonteBotao);
-        btnRelatorios.setFont(fonteBotao);
-        btnConfig.setFont(fonteBotao);
+        // Painel Central de Ações (Estilo Cards)
+        JPanel cardsPanel = new JPanel(new GridLayout(2, 2, 15, 15));
+        cardsPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
 
-        // --- LÓGICA DE PERMISSÕES (BLOQUEIO) ---
-        // Verifica se o cargo do usuário é diferente de ADMIN
-        if (usuario.getCargo() != Usuario.Perfil.ADMIN) {
-            btnRelatorios.setEnabled(false);
-            btnConfig.setEnabled(false);
-            
-            String msgAviso = "Acesso restrito a administradores.";
-            btnRelatorios.setToolTipText(msgAviso);
-            btnConfig.setToolTipText(msgAviso);
-            
-            btnRelatorios.setBackground(Color.LIGHT_GRAY);
-            btnConfig.setBackground(Color.LIGHT_GRAY);
-        }
+        cardsPanel.add(criarBotaoMenu("PDV - Vendas", new Color(46, 204, 113), true));
+        cardsPanel.add(criarBotaoMenu("Produtos", new Color(241, 196, 15), true));
+        
+        // Funções Administrativas
+        boolean isAdmin = usuario.getCargo() == Usuario.Perfil.ADMIN;
+        cardsPanel.add(criarBotaoMenu("Relatórios", new Color(231, 76, 60), isAdmin));
+        cardsPanel.add(criarBotaoMenu("Configurações", new Color(149, 165, 166), isAdmin));
 
-        pnlBotoes.add(btnVendas);
-        pnlBotoes.add(btnProdutos);
-        pnlBotoes.add(btnRelatorios);
-        pnlBotoes.add(btnConfig);
+        add(topBar, BorderLayout.NORTH);
+        add(cardsPanel, BorderLayout.CENTER);
+    }
 
-        JPanel pnlStatus = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        pnlStatus.setBorder(BorderFactory.createEtchedBorder());
-        JLabel lblUser = new JLabel("Usuário: " + usuario.getNome() + " | Perfil: " + usuario.getCargo());
-        pnlStatus.add(lblUser);
-
-        add(pnlBotoes, BorderLayout.CENTER);
-        add(pnlStatus, BorderLayout.SOUTH);
+    private JButton criarBotaoMenu(String texto, Color cor, boolean habilitado) {
+        JButton btn = new JButton(texto);
+        btn.setFont(new Font("Arial", Font.BOLD, 18));
+        btn.setBackground(habilitado ? cor : Color.LIGHT_GRAY);
+        btn.setForeground(Color.WHITE);
+        btn.setEnabled(habilitado);
+        btn.setFocusPainted(false);
+        if (!habilitado) btn.setToolTipText("Acesso Administrativo");
+        return btn;
     }
 }
