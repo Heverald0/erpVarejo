@@ -13,13 +13,16 @@ public class Usuario {
     private Integer id;
 
     private String nome;
-
-    @Column(unique = true, nullable = false)
+    
+    @Column(unique = true)
     private String login;
-
-    @Column(nullable = false)
+    
     private String senha;
 
-    @Column(nullable = false)
-    private String cargo; 
+    @Enumerated(EnumType.STRING)
+    private Perfil cargo;
+
+    public enum Perfil {
+        ADMIN, OPERADOR
+    }
 }

@@ -1,14 +1,16 @@
 package com.ERP_Varejo;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
-import org.springframework.boot.CommandLineRunner;
-import com.ERP_Varejo.service.ProdutoService;
-import com.ERP_Varejo.service.VendaService;
+import com.ERP_Varejo.model.Usuario;
 import com.ERP_Varejo.model.Produto;
 import com.ERP_Varejo.model.Venda;
 import com.ERP_Varejo.model.ItemVenda;
+import com.ERP_Varejo.service.UsuarioService;
+import com.ERP_Varejo.service.ProdutoService;
+import com.ERP_Varejo.service.VendaService;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,26 +19,49 @@ import java.util.List;
 public class ErpApplication {
 
     public static void main(String[] args) {
-        // Inicia o framework Spring Boot
+        // Inicializa o Spring Boot e o servidor embutido (Tomcat) na porta 8080
         SpringApplication.run(ErpApplication.class, args);
     }
 
+    /**
+     * BLOCO ATIVO: Configuração Inicial de Segurança
+     * Este método valida se o administrador existe e garante o uso de BCrypt.
+     */
+    @Bean
+    public CommandLineRunner setupAdmin(UsuarioService usuarioService) {
+        return (args) -> {
+            System.out.println("\n=== [FASE 1] VERIFICANDO SEGURANÇA DO SISTEMA ===");
+            
+            // Valida se o usuário 'admin' já possui hash BCrypt no banco
+            if (usuarioService.autenticar("admin", "admin123") == null) {
+                System.out.println("Criando usuário administrador padrão com senha criptografada...");
+                
+                Usuario admin = new Usuario();
+                admin.setNome("Heveraldo Admin");
+                admin.setLogin("admin");
+                admin.setSenha("admin123"); // O UsuarioService aplicará o BCrypt automaticamente
+                
+                
+                usuarioService.salvar(admin);
+                System.out.println("[OK] Admin criado. Verifique o hash no pgAdmin na tabela 'usuarios'.");
+            } else {
+                System.out.println("[OK] Acesso administrativo validado e ativo.");
+            }
+            System.out.println("================================================\n");
+        };
+    }
+
     /* * ========================================================================
-     * MANUAL DE INSTRUÇÕES / HISTÓRICO DE VALIDAÇÃO (COMENTADO)
+     * BLOCO COMENTADO: MANUAL DE INSTRUÇÕES E TESTES DE INTEGRIDADE
      * ========================================================================
-     * Este bloco foi utilizado para validar as funções core do sistema:
-     * - Conexão com o banco erp_casadosfogoes
-     * - Geração de UUID automático
-     * - Baixa de estoque com @Transactional
-     * * Para rodar este teste novamente, basta remover os símbolos de comentário 
-     * no início e no fim do método abaixo.
+     * Este código abaixo foi o responsável por validar as operações de estoque.
+     * Use-o como referência para entender o fluxo de persistência.
      */
     
-    /*
-    @Bean
+    /* @Bean
     public CommandLineRunner validationTest(ProdutoService produtoService, VendaService vendaService) {
         return (args) -> {
-            System.out.println("\n=== INICIANDO VALIDAÇÃO DAS FUNÇÕES ===");
+            System.out.println("\n=== [MANUAL] INICIANDO VALIDAÇÃO DE ESTOQUE E VENDAS ===");
 
             // 1. TESTE DE PRODUTO E UUID
             Produto feijao = new Produto();
@@ -59,20 +84,19 @@ public class ErpApplication {
             itens.add(item);
             novaVenda.setItens(itens);
 
-            // Realizando a operação
             vendaService.realizarVenda(novaVenda);
             System.out.println("[OK] Venda realizada com sucesso via PIX!");
 
-            // 3. CONFERÊNCIA FINAL
             Produto produtoAposVenda = produtoService.buscarPorSerial(feijao.getCodigoSerial());
-            System.out.println("Estoque inicial: 100 | Estoque atual: " + produtoAposVenda.getQuantidadeEstoque());
+            System.out.println("Status: Estoque inicial 100 -> Estoque atual: " + produtoAposVenda.getQuantidadeEstoque());
             
             if (produtoAposVenda.getQuantidadeEstoque() == 90) {
-                System.out.println("=== SISTEMA VALIDADO COM SUCESSO! ===");
+                System.out.println("=== [OK] INTEGRIDADE DO BANCO DE DADOS VALIDADA! ===");
             } else {
-                System.out.println("!!! ERRO NA VALIDAÇÃO DO ESTOQUE !!!");
+                System.out.println("!!! [ALERTA] FALHA NA BAIXA DE ESTOQUE !!!");
             }
+            System.out.println("========================================================\n");
         };
     }
     */
-}
+} // Chave final que fecha a classe ErpApplication
