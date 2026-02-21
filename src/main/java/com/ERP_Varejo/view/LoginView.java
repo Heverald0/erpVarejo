@@ -13,11 +13,13 @@ public class LoginView extends JFrame {
     @Autowired
     private UsuarioService usuarioService;
 
+    @Autowired
+    private VendaView vendaView; // INJEÇÃO ADICIONADA
+
     private JTextField txtLogin;
     private JPasswordField txtSenha;
 
     public void exibir() {
-        // Aplica um tema mais moderno se disponível
         try {
             for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
@@ -25,14 +27,13 @@ public class LoginView extends JFrame {
                     break;
                 }
             }
-        } catch (Exception e) { /* Usa o padrão */ }
+        } catch (Exception e) { }
 
         setTitle("Acesso ao Sistema - ERP CasadosFogões");
         setSize(400, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Painel com Degradê ou Cor Sólida de Mercado (Azul Escuro/Slate)
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBackground(new Color(44, 62, 80));
 
@@ -79,11 +80,12 @@ public class LoginView extends JFrame {
     private void realizarLogin() {
         String login = txtLogin.getText();
         String senha = new String(txtSenha.getPassword());
-        Usuario auth = usuarioService.autenticar(login, senha); //
+        Usuario auth = usuarioService.autenticar(login, senha);
 
         if (auth != null) {
             this.dispose();
-            SwingUtilities.invokeLater(() -> new MenuPrincipalView(auth, this).setVisible(true));
+            // CHAMADA CORRIGIDA COM 3 PARÂMETROS
+            SwingUtilities.invokeLater(() -> new MenuPrincipalView(auth, this, vendaView).setVisible(true));
         } else {
             JOptionPane.showMessageDialog(this, "Acesso Negado!", "Erro", JOptionPane.ERROR_MESSAGE);
         }
