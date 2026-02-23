@@ -26,8 +26,7 @@ public class ProdutoFormularioView extends JDialog {
         this.callbackAtualizacao = callback;
         this.produtoExistente = produto;
         
-        String titulo = (produto == null) ? "Novo Produto - CasadosFogões" : "Editar Produto - CasadosFogões";
-        setTitle(titulo);
+        setTitle(produto == null ? "Novo Produto" : "Editar Produto");
         setSize(450, 480);
         setLocationRelativeTo(null);
         setModal(true);
@@ -38,30 +37,21 @@ public class ProdutoFormularioView extends JDialog {
 
         txtNome = criarCampoPersonalizado(produto != null ? produto.getNome() : "");
         txtSerial = criarCampoPersonalizado(produto != null ? produto.getCodigoSerial() : "");
-        txtCusto = criarCampoPersonalizado(produto != null ? produto.getPrecoCusto().toString() : "0.00");
-        txtVenda = criarCampoPersonalizado(produto != null ? produto.getPrecoVenda().toString() : "0.00");
-        txtEstoque = criarCampoPersonalizado(produto != null ? produto.getQuantidadeEstoque().toString() : "0");
+        txtCusto = criarCampoPersonalizado(produto != null && produto.getPrecoCusto() != null ? produto.getPrecoCusto().toString() : "0.00");
+        txtVenda = criarCampoPersonalizado(produto != null && produto.getPrecoVenda() != null ? produto.getPrecoVenda().toString() : "0.00");
+        txtEstoque = criarCampoPersonalizado(produto != null ? String.valueOf(produto.getQuantidadeEstoque()) : "0");
 
-        if (produto != null) {
-            txtEstoque.setEditable(false);
-            txtEstoque.setToolTipText("Use o botão 'Entrada' na tela de gestão para alterar o saldo.");
-        }
+        if (produto != null) txtEstoque.setEditable(false);
 
-        panel.add(new JLabel("Nome do Produto:"));
-        panel.add(txtNome);
-        panel.add(new JLabel("Código:"));
-        panel.add(txtSerial);
-        panel.add(new JLabel("Preço de Custo (R$):"));
-        panel.add(txtCusto);
-        panel.add(new JLabel("Preço de Venda (R$):"));
-        panel.add(txtVenda);
-        panel.add(new JLabel("Qtd Atual em Estoque:"));
-        panel.add(txtEstoque);
+        panel.add(new JLabel("Nome do Produto:")); panel.add(txtNome);
+        panel.add(new JLabel("Código Serial:")); panel.add(txtSerial);
+        panel.add(new JLabel("Preço de Custo:")); panel.add(txtCusto);
+        panel.add(new JLabel("Preço de Venda:")); panel.add(txtVenda);
+        panel.add(new JLabel("Estoque Atual:")); panel.add(txtEstoque);
 
-        JButton btnSalvar = new JButton("SALVAR ALTERAÇÕES (ENTER)");
+        JButton btnSalvar = new JButton("CONFIRMAR (ENTER)");
         btnSalvar.setBackground(new Color(46, 204, 113));
         btnSalvar.setForeground(Color.WHITE);
-        btnSalvar.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnSalvar.addActionListener(e -> salvar());
 
         add(panel, BorderLayout.CENTER);
@@ -71,8 +61,8 @@ public class ProdutoFormularioView extends JDialog {
         setVisible(true);
     }
 
-    private JTextField criarCampoPersonalizado(String textoInicial) {
-        JTextField field = new JTextField(textoInicial);
+    private JTextField criarCampoPersonalizado(String texto) {
+        JTextField field = new JTextField(texto);
         field.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) { field.selectAll(); }
@@ -93,19 +83,13 @@ public class ProdutoFormularioView extends JDialog {
             p.setCodigoSerial(txtSerial.getText().trim());
             p.setPrecoCusto(new BigDecimal(txtCusto.getText().replace(",", ".")));
             p.setPrecoVenda(new BigDecimal(txtVenda.getText().replace(",", ".")));
-            
-            // estoque manualmente somente se for produto novo
-            if (produtoExistente == null) {
-                p.setQuantidadeEstoque(Integer.parseInt(txtEstoque.getText().trim()));
-            }
+            if (produtoExistente == null) p.setQuantidadeEstoque(Integer.parseInt(txtEstoque.getText()));
 
             produtoService.salvar(p);
-            JOptionPane.showMessageDialog(this, "Produto salvo com sucesso!");
-            
             if (callbackAtualizacao != null) callbackAtualizacao.run();
             dispose();
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Erro: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Erro: " + ex.getMessage());
         }
     }
 }

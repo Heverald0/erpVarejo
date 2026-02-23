@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 
 @Component
 public class LoginView extends JFrame {
@@ -18,6 +20,9 @@ public class LoginView extends JFrame {
 
     @Autowired
     private VendaView vendaView;
+
+    @Autowired
+    private RelatorioCaixaView relatorioCaixaView;
 
     private JTextField txtLogin;
     private JPasswordField txtSenha;
@@ -35,7 +40,7 @@ public class LoginView extends JFrame {
             }
         } catch (Exception e) { }
 
-        setTitle("Acesso ao Sistema - ERP CasadosFogões");
+        setTitle("Acesso ao Sistema - ERP Casa dos Fogões");
         setSize(400, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -68,6 +73,15 @@ public class LoginView extends JFrame {
         
         gbc.gridx = 1;
         txtSenha = new JPasswordField(15);
+        
+        txtSenha.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    realizarLogin();
+                }
+            }
+        });
         formPanel.add(txtSenha, gbc);
 
         JButton btnEntrar = new JButton("ENTRAR");
@@ -88,11 +102,18 @@ public class LoginView extends JFrame {
     private void realizarLogin() {
         String login = txtLogin.getText();
         String senha = new String(txtSenha.getPassword());
+        
         Usuario auth = usuarioService.autenticar(login, senha);
 
         if (auth != null) {
             this.dispose();
-            SwingUtilities.invokeLater(() -> new MenuPrincipalView(auth, this, vendaView, produtoGestaoView).setVisible(true));
+            SwingUtilities.invokeLater(() -> new MenuPrincipalView(
+                auth, 
+                this, 
+                vendaView, 
+                produtoGestaoView, 
+                relatorioCaixaView 
+            ).setVisible(true));
         } else {
             JOptionPane.showMessageDialog(this, "Acesso Negado!", "Erro", JOptionPane.ERROR_MESSAGE);
         }

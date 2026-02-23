@@ -1,7 +1,6 @@
 package com.ERP_Varejo.view;
 
 import com.ERP_Varejo.model.Usuario;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import javax.swing.*;
 import java.awt.*;
@@ -14,63 +13,77 @@ public class MenuPrincipalView extends JFrame {
     private final LoginView loginView;
     private final VendaView vendaView;
     private final ProdutoGestaoView produtoGestaoView;
+    private final RelatorioCaixaView relatorioCaixaView;
 
-    public MenuPrincipalView(Usuario usuario, LoginView loginView, VendaView vendaView, ProdutoGestaoView produtoGestaoView) {
+    public MenuPrincipalView(Usuario usuario, LoginView loginView, VendaView vendaView, 
+                               ProdutoGestaoView produtoGestaoView, RelatorioCaixaView relatorioCaixaView) {
         this.usuario = usuario;
         this.loginView = loginView;
         this.vendaView = vendaView;
         this.produtoGestaoView = produtoGestaoView;
+        this.relatorioCaixaView = relatorioCaixaView;
 
-        setTitle("ERP CasadosFogões - Dashboard");
-        setSize(1000, 650);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-        
+        configurarJanela();
         configurarLayout();
         configurarAtalhosGlobais();
+    }
+
+    private void configurarJanela() {
+        setTitle("Sistema ERP - CasadosFogões | Operador: " + usuario.getNome());
+        setSize(1000, 700);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
     }
 
     private void configurarLayout() {
         setLayout(new BorderLayout());
 
-        JPanel topBar = new JPanel(new BorderLayout());
-        topBar.setBackground(new Color(26, 37, 47));
-        topBar.setPreferredSize(new Dimension(1000, 60));
-        
-        JLabel lblUser = new JLabel("  Operador: " + usuario.getNome() + " | Perfil: " + usuario.getCargo());
-        lblUser.setForeground(Color.WHITE);
-        lblUser.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        JPanel pnlCabecalho = new JPanel(new BorderLayout());
+        pnlCabecalho.setBackground(new Color(44, 62, 80));
+        pnlCabecalho.setPreferredSize(new Dimension(0, 80));
 
-        JButton btnLogout = new JButton("Sair (ESC)");
-        btnLogout.addActionListener(e -> realizarLogout());
+        JLabel lblTitulo = new JLabel(" ERP VAREJO - CASADOSFOGÕES", JLabel.LEFT);
+        lblTitulo.setForeground(Color.WHITE);
+        lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        pnlCabecalho.add(lblTitulo, BorderLayout.WEST);
 
-        topBar.add(lblUser, BorderLayout.WEST);
-        topBar.add(btnLogout, BorderLayout.EAST);
+        add(pnlCabecalho, BorderLayout.NORTH);
 
-        JPanel pnlAcoes = new JPanel(new GridLayout(2, 2, 15, 15));
-        pnlAcoes.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        JPanel pnlAcoes = new JPanel(new GridLayout(2, 2, 20, 20));
+        pnlAcoes.setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50));
 
-        pnlAcoes.add(criarBotaoMenu("CAIXA (F1)", true, e -> abrirPDV()));
-        
-        pnlAcoes.add(criarBotaoMenu("ESTOQUE (F2)", true, e -> produtoGestaoView.exibir()));
-        
         boolean isAdmin = usuario.getCargo() == Usuario.Perfil.ADMIN;
-        pnlAcoes.add(criarBotaoMenu("RELATÓRIOS (F3)", isAdmin, e -> System.out.println("Relatórios")));
-        pnlAcoes.add(criarBotaoMenu("CONFIG (F4)", isAdmin, e -> System.out.println("Config")));
 
-        add(topBar, BorderLayout.NORTH);
+        pnlAcoes.add(criarBotaoMenu("PDV - VENDAS (F1)", true, e -> vendaView.exibir(usuario)));
+        pnlAcoes.add(criarBotaoMenu("ESTOQUE / PRODUTOS (F2)", true, e -> produtoGestaoView.exibir()));
+        
+        pnlAcoes.add(criarBotaoMenu("RELATÓRIOS (F3)", isAdmin, e -> {
+            if (isAdmin) relatorioCaixaView.exibir();
+            else JOptionPane.showMessageDialog(this, "Acesso restrito ao Administrador.");
+        }));
+
+        pnlAcoes.add(criarBotaoMenu("SAIR (ESC)", true, e -> fecharSistema()));
+
         add(pnlAcoes, BorderLayout.CENTER);
     }
 
-    private void configurarAtalhosGlobais() {
-        JRootPane rootPane = this.getRootPane();
-        InputMap inputMap = rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
-        ActionMap actionMap = rootPane.getActionMap();
+    private JButton criarBotaoMenu(String texto, boolean habilitado, java.awt.event.ActionListener acao) {
+        JButton btn = new JButton(texto);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btn.setEnabled(habilitado);
+        btn.setFocusable(false);
+        btn.addActionListener(acao);
+        return btn;
+    }
 
-        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "abrirPDV");
-        actionMap.put("abrirPDV", new AbstractAction() {
+    private void configurarAtalhosGlobais() {
+        InputMap inputMap = getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = getRootPane().getActionMap();
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "abrirVendas");
+        actionMap.put("abrirVendas", new AbstractAction() {
             @Override
-            public void actionPerformed(ActionEvent e) { abrirPDV(); }
+            public void actionPerformed(ActionEvent e) { vendaView.exibir(usuario); }
         });
 
         inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "abrirEstoque");
@@ -79,28 +92,29 @@ public class MenuPrincipalView extends JFrame {
             public void actionPerformed(ActionEvent e) { produtoGestaoView.exibir(); }
         });
 
-        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "logout");
-        actionMap.put("logout", new AbstractAction() {
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "abrirRelatorios");
+        actionMap.put("abrirRelatorios", new AbstractAction() {
             @Override
-            public void actionPerformed(ActionEvent e) { realizarLogout(); }
+            public void actionPerformed(ActionEvent e) {
+                if (usuario.getCargo() == Usuario.Perfil.ADMIN) {
+                    relatorioCaixaView.exibir();
+                } else {
+                    JOptionPane.showMessageDialog(null, "Acesso restrito ao Administrador.");
+                }
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "sair");
+        actionMap.put("sair", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) { fecharSistema(); }
         });
     }
 
-    private void abrirPDV() {
-        vendaView.exibir(usuario);
-    }
-
-    private void realizarLogout() {
-        this.dispose();
-        loginView.exibir();
-    }
-
-    private JButton criarBotaoMenu(String texto, boolean habilitado, java.awt.event.ActionListener acao) {
-        JButton btn = new JButton(texto);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        btn.setEnabled(habilitado);
-        btn.addActionListener(acao);
-        if (!habilitado) btn.setToolTipText("Acesso Restrito");
-        return btn;
+    private void fecharSistema() {
+        int confirm = JOptionPane.showConfirmDialog(this, "Deseja realmente sair?", "Sair", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            System.exit(0);
+        }
     }
 }
