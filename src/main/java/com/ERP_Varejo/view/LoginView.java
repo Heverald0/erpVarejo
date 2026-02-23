@@ -14,12 +14,15 @@ public class LoginView extends JFrame {
     private UsuarioService usuarioService;
 
     @Autowired
-    private VendaView vendaView; // INJEÇÃO ADICIONADA
+    private VendaView vendaView;
 
     private JTextField txtLogin;
     private JPasswordField txtSenha;
 
     public void exibir() {
+        if (txtLogin != null) txtLogin.setText("");
+        if (txtSenha != null) txtSenha.setText("");
+
         try {
             for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
@@ -73,8 +76,10 @@ public class LoginView extends JFrame {
         mainPanel.add(formPanel, BorderLayout.CENTER);
         mainPanel.add(btnEntrar, BorderLayout.SOUTH);
 
-        add(mainPanel);
+        setContentPane(mainPanel);
         setVisible(true);
+    
+        if (txtLogin != null) txtLogin.requestFocus();
     }
 
     private void realizarLogin() {
@@ -84,7 +89,6 @@ public class LoginView extends JFrame {
 
         if (auth != null) {
             this.dispose();
-            // CHAMADA CORRIGIDA COM 3 PARÂMETROS
             SwingUtilities.invokeLater(() -> new MenuPrincipalView(auth, this, vendaView).setVisible(true));
         } else {
             JOptionPane.showMessageDialog(this, "Acesso Negado!", "Erro", JOptionPane.ERROR_MESSAGE);

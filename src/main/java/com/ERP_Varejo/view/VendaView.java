@@ -43,7 +43,6 @@ public class VendaView extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // --- PAINEL TOPO: IDENTIFICAÇÃO E ENTRADA ---
         JPanel pnlTopo = new JPanel(new BorderLayout());
         pnlTopo.setBackground(new Color(44, 62, 80));
         
@@ -68,7 +67,6 @@ public class VendaView extends JFrame {
         pnlTopo.add(pnlInput, BorderLayout.CENTER);
         pnlTopo.add(lblAtalhos, BorderLayout.EAST);
 
-        // --- TABELA DE ITENS ---
         String[] colunas = {"Item", "Descrição", "Qtd", "V. Unit", "Subtotal"};
         modelTabela = new DefaultTableModel(colunas, 0) {
             @Override
@@ -80,7 +78,6 @@ public class VendaView extends JFrame {
         
         add(new JScrollPane(tabelaItens), BorderLayout.CENTER);
 
-        // --- PAINEL INFERIOR ---
         JPanel pnlInferior = new JPanel(new BorderLayout());
         pnlInferior.setBackground(Color.WHITE);
         pnlInferior.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
@@ -103,11 +100,14 @@ public class VendaView extends JFrame {
         KeyAdapter adapter = new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-                switch (e.getKeyCode()) {
-                    case KeyEvent.VK_ENTER -> adicionarItem();
-                    case KeyEvent.VK_F2 -> abrirModalPesquisa();
-                    case KeyEvent.VK_F5 -> finalizarVenda();
-                    case KeyEvent.VK_ESCAPE -> dispose();
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    adicionarItem();
+                } else if (e.getKeyCode() == KeyEvent.VK_F2) {
+                    abrirModalPesquisa();
+                } else if (e.getKeyCode() == KeyEvent.VK_F5) {
+                    finalizarVenda();
+                } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    dispose();
                 }
             }
         };
@@ -118,6 +118,8 @@ public class VendaView extends JFrame {
     private void adicionarItem() {
         try {
             String codigo = txtCodProduto.getText().trim();
+            if (codigo.isEmpty()) return;
+
             Produto p = produtoService.buscarPorSerial(codigo);
 
             if (p != null) {
@@ -128,40 +130,48 @@ public class VendaView extends JFrame {
                     return;
                 }
 
-                BigDecimal subtotal = p.getPrecoVenda().multiply(new BigDecimal(qtd));
+                BigDecimal preco = p.getPrecoVenda();
+                BigDecimal subtotal = preco.multiply(new BigDecimal(qtd));
                 totalGeral = totalGeral.add(subtotal);
 
                 ItemVenda item = new ItemVenda();
                 item.setProduto(p);
                 item.setQuantidade(qtd);
-                item.setPrecoUnitarioHistorico(p.getPrecoVenda());
+                item.setPrecoUnitarioHistorico(preco);
                 listaItensVenda.add(item);
 
                 modelTabela.addRow(new Object[]{
                     modelTabela.getRowCount() + 1,
                     p.getNome(),
                     qtd,
-                    String.format("R$ %.2f", p.getPrecoVenda()),
+                    String.format("R$ %.2f", preco),
                     String.format("R$ %.2f", subtotal)
                 });
 
                 lblTotal.setText(String.format("TOTAL: R$ %.2f", totalGeral));
                 limparEntrada();
             } else {
-                JOptionPane.showMessageDialog(this, "Produto não encontrado!", "Erro", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Produto '" + codigo + "' não encontrado!", "Erro de Busca", JOptionPane.ERROR_MESSAGE);
             }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "A quantidade deve ser um número inteiro.");
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Erro: " + ex.getMessage());
+            JOptionPane.showMessageDialog(this, "Erro técnico: " + ex.getMessage());
         }
     }
 
     private void abrirModalPesquisa() {
         JDialog modal = new JDialog(this, "Pesquisa de Produtos", true);
-        modal.setSize(600, 400);
+        modal.setSize(700, 450);
         modal.setLocationRelativeTo(this);
         modal.setLayout(new BorderLayout());
 
-        // Busca real de todos os produtos do estoque
+        JPanel pnlBusca = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JTextField txtFiltro = new JTextField(20);
+        pnlBusca.add(new JLabel("Filtrar Nome:"));
+        pnlBusca.add(txtFiltro);
+        modal.add(pnlBusca, BorderLayout.NORTH);
+
         List<Produto> produtos = produtoService.listarTodos();
         String[] colunas = {"Código Serial", "Nome", "Preço", "Estoque"};
         DefaultTableModel modelBusca = new DefaultTableModel(colunas, 0);
@@ -171,28 +181,27 @@ public class VendaView extends JFrame {
         }
 
         JTable tabBusca = new JTable(modelBusca);
+        modal.add(new JScrollPane(tabBusca), BorderLayout.CENTER);
+
         tabBusca.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     txtCodProduto.setText(tabBusca.getValueAt(tabBusca.getSelectedRow(), 0).toString());
                     modal.dispose();
-                    txtCodProduto.requestFocus();
+                    SwingUtilities.invokeLater(() -> adicionarItem());
                 }
             }
         });
 
-        modal.add(new JScrollPane(tabBusca), BorderLayout.CENTER);
-        modal.add(new JLabel(" Selecione o produto com duplo clique"), BorderLayout.SOUTH);
         modal.setVisible(true);
     }
 
     private void finalizarVenda() {
         if (listaItensVenda.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Nenhum item adicionado!");
+            JOptionPane.showMessageDialog(this, "O carrinho está vazio!");
             return;
         }
 
-        // Escolha do Método de Pagamento (Regra de Negócio)
         Venda.MetodoPagamento[] metodos = Venda.MetodoPagamento.values();
         Venda.MetodoPagamento selecao = (Venda.MetodoPagamento) JOptionPane.showInputDialog(
                 this, "Selecione o Método de Pagamento:", "Finalizar Venda",
@@ -207,20 +216,12 @@ public class VendaView extends JFrame {
                 venda.setMetodoPagamento(selecao);
                 venda.setItens(listaItensVenda);
 
-                // Persistência e Baixa de Estoque Real no PostgreSQL
                 vendaService.realizarVenda(venda);
 
-                int op = JOptionPane.showConfirmDialog(this, 
-                    "Venda Concluída! Deseja imprimir o cupom?", 
-                    "Sucesso", JOptionPane.YES_NO_OPTION);
-
-                if (op == JOptionPane.YES_OPTION) {
-                    System.out.println("LOG: Enviando layout do Cupom ID " + venda.getId() + " para processamento.");
-                }
-
+                JOptionPane.showMessageDialog(this, "Venda finalizada com sucesso!");
                 resetarPDV();
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Erro ao processar venda: " + ex.getMessage());
+                JOptionPane.showMessageDialog(this, "Erro ao salvar venda: " + ex.getMessage());
             }
         }
     }
