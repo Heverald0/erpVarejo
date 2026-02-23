@@ -14,31 +14,31 @@ public class ProdutoService {
     private ProdutoRepository repository;
 
     public Produto salvar(Produto produto) {
-        if (produto.getCodigoSerial() == null || produto.getCodigoSerial().isEmpty()) {
-            String serialUnico = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-            produto.setCodigoSerial("SN-" + serialUnico);
+        if (produto.getCodigoSerial() == null || produto.getCodigoSerial().trim().isEmpty()) {
+            String prefixo = "PROD-";
+            String sufixo = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+            produto.setCodigoSerial(prefixo + sufixo);
         }
-        
         return repository.save(produto);
     }
-
-
-    public Produto buscarPorSerial(String serial) {
-        return repository.findByCodigoSerial(serial);
-    }
-
-
-    public List<Produto> buscarPorNome(String nome) {
-        return repository.findByNomeContainingIgnoreCase(nome);
-    }
-
 
     public List<Produto> listarTodos() {
         return repository.findAll();
     }
 
+    public Produto buscarPorSerial(String serial) {
+        return repository.findByCodigoSerial(serial);
+    }
 
-    public void deletar(Integer id) {
+    public List<Produto> buscarPorNome(String nome) {
+        return repository.findByNomeContainingIgnoreCase(nome);
+    }
+
+    public void excluir(Integer id) {
         repository.deleteById(id);
     }
+
+    public Produto buscarPorId(Integer id) {
+    return repository.findById(id).orElse(null);
+}
 }

@@ -8,9 +8,9 @@ import java.util.List;
 @Repository
 public interface ProdutoRepository extends JpaRepository<Produto, Integer> {
 
-    // Método de busca feito a partir do serial 
+    // busca por serial
     Produto findByCodigoSerial(String codigoSerial);
 
-    // Método de busca feito a partir do nome do produto
-    List<Produto> findByNomeContainingIgnoreCase(String nome);
+    //  busca por nome
+    List<Produto> findByNomeContainingIgnoreCase(String nome); 
 }
