@@ -11,6 +11,9 @@ import java.awt.*;
 public class LoginView extends JFrame {
 
     @Autowired
+    private ProdutoGestaoView produtoGestaoView;
+
+    @Autowired
     private UsuarioService usuarioService;
 
     @Autowired
@@ -89,7 +92,7 @@ public class LoginView extends JFrame {
 
         if (auth != null) {
             this.dispose();
-            SwingUtilities.invokeLater(() -> new MenuPrincipalView(auth, this, vendaView).setVisible(true));
+            SwingUtilities.invokeLater(() -> new MenuPrincipalView(auth, this, vendaView, produtoGestaoView).setVisible(true));
         } else {
             JOptionPane.showMessageDialog(this, "Acesso Negado!", "Erro", JOptionPane.ERROR_MESSAGE);
         }

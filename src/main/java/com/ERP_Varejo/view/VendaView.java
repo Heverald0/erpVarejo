@@ -161,40 +161,72 @@ public class VendaView extends JFrame {
     }
 
     private void abrirModalPesquisa() {
-        JDialog modal = new JDialog(this, "Pesquisa de Produtos", true);
-        modal.setSize(700, 450);
-        modal.setLocationRelativeTo(this);
-        modal.setLayout(new BorderLayout());
+    JDialog modal = new JDialog(this, "Pesquisar Produto (F2)", true);
+    modal.setSize(700, 500);
+    modal.setLocationRelativeTo(this);
+    modal.setLayout(new BorderLayout());
 
-        JPanel pnlBusca = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JTextField txtFiltro = new JTextField(20);
-        pnlBusca.add(new JLabel("Filtrar Nome:"));
-        pnlBusca.add(txtFiltro);
-        modal.add(pnlBusca, BorderLayout.NORTH);
+    JPanel pnlFiltro = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    JTextField txtBusca = new JTextField(25);
+    pnlFiltro.add(new JLabel("Digite o nome:"));
+    pnlFiltro.add(txtBusca);
+    modal.add(pnlFiltro, BorderLayout.NORTH);
 
-        List<Produto> produtos = produtoService.listarTodos();
-        String[] colunas = {"Código Serial", "Nome", "Preço", "Estoque"};
-        DefaultTableModel modelBusca = new DefaultTableModel(colunas, 0);
+    String[] colunas = {"Serial", "Nome", "Preço", "Estoque"};
+    DefaultTableModel model = new DefaultTableModel(colunas, 0);
+    JTable tabela = new JTable(model);
+    tabela.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+    modal.add(new JScrollPane(tabela), BorderLayout.CENTER);
 
-        for (Produto p : produtos) {
-            modelBusca.addRow(new Object[]{p.getCodigoSerial(), p.getNome(), p.getPrecoVenda(), p.getQuantidadeEstoque()});
+    txtBusca.addKeyListener(new KeyAdapter() {
+        @Override
+        public void keyReleased(KeyEvent e) {
+            if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+                tabela.requestFocus();
+                if (tabela.getRowCount() > 0) tabela.setRowSelectionInterval(0, 0);
+                return;
+            }
+
+            String termo = txtBusca.getText();
+            List<Produto> resultados = produtoService.buscarPorNome(termo);
+            model.setRowCount(0);
+            for (Produto p : resultados) {
+                model.addRow(new Object[]{p.getCodigoSerial(), p.getNome(), p.getPrecoVenda(), p.getQuantidadeEstoque()});
+            }
         }
-
-        JTable tabBusca = new JTable(modelBusca);
-        modal.add(new JScrollPane(tabBusca), BorderLayout.CENTER);
-
-        tabBusca.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    txtCodProduto.setText(tabBusca.getValueAt(tabBusca.getSelectedRow(), 0).toString());
+    });
+    tabela.addKeyListener(new KeyAdapter() {
+        @Override
+        public void keyPressed(KeyEvent e) {
+            if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                int row = tabela.getSelectedRow();
+                if (row != -1) {
+                    txtCodProduto.setText(tabela.getValueAt(row, 0).toString());
                     modal.dispose();
-                    SwingUtilities.invokeLater(() -> adicionarItem());
+                    adicionarItem();
+                }
+                e.consume();
+            }
+        }
+    });
+
+    tabela.addMouseListener(new java.awt.event.MouseAdapter() {
+        public void mouseClicked(java.awt.event.MouseEvent e) {
+            if (e.getClickCount() == 2) {
+                int row = tabela.getSelectedRow();
+                if (row != -1) {
+                    txtCodProduto.setText(tabela.getValueAt(row, 0).toString());
+                    modal.dispose();
+                    adicionarItem();
                 }
             }
-        });
+        }
+    });
 
-        modal.setVisible(true);
-    }
+    SwingUtilities.invokeLater(() -> txtBusca.requestFocus());
+    
+    modal.setVisible(true);
+}
 
     private void finalizarVenda() {
         if (listaItensVenda.isEmpty()) {

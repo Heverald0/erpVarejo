@@ -1,6 +1,8 @@
 package com.ERP_Varejo.view;
 
 import com.ERP_Varejo.model.Usuario;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -11,11 +13,13 @@ public class MenuPrincipalView extends JFrame {
     private final Usuario usuario;
     private final LoginView loginView;
     private final VendaView vendaView;
+    private final ProdutoGestaoView produtoGestaoView;
 
-    public MenuPrincipalView(Usuario usuario, LoginView loginView, VendaView vendaView) {
+    public MenuPrincipalView(Usuario usuario, LoginView loginView, VendaView vendaView, ProdutoGestaoView produtoGestaoView) {
         this.usuario = usuario;
         this.loginView = loginView;
         this.vendaView = vendaView;
+        this.produtoGestaoView = produtoGestaoView;
 
         setTitle("ERP CasadosFogões - Dashboard");
         setSize(1000, 650);
@@ -46,13 +50,13 @@ public class MenuPrincipalView extends JFrame {
         JPanel pnlAcoes = new JPanel(new GridLayout(2, 2, 15, 15));
         pnlAcoes.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // Chamadas corrigidas para o método criarBotaoMenu
         pnlAcoes.add(criarBotaoMenu("CAIXA (F1)", true, e -> abrirPDV()));
-        pnlAcoes.add(criarBotaoMenu("ESTOQUE (F2)", true, e -> System.out.println("Acessando Estoque...")));
+        
+        pnlAcoes.add(criarBotaoMenu("ESTOQUE (F2)", true, e -> produtoGestaoView.exibir()));
         
         boolean isAdmin = usuario.getCargo() == Usuario.Perfil.ADMIN;
-        pnlAcoes.add(criarBotaoMenu("RELATÓRIOS (F3)", isAdmin, e -> System.out.println("Acessando Relatórios...")));
-        pnlAcoes.add(criarBotaoMenu("CONFIG (F4)", isAdmin, e -> System.out.println("Acessando Configurações...")));
+        pnlAcoes.add(criarBotaoMenu("RELATÓRIOS (F3)", isAdmin, e -> System.out.println("Relatórios")));
+        pnlAcoes.add(criarBotaoMenu("CONFIG (F4)", isAdmin, e -> System.out.println("Config")));
 
         add(topBar, BorderLayout.NORTH);
         add(pnlAcoes, BorderLayout.CENTER);
@@ -67,6 +71,12 @@ public class MenuPrincipalView extends JFrame {
         actionMap.put("abrirPDV", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) { abrirPDV(); }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "abrirEstoque");
+        actionMap.put("abrirEstoque", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) { produtoGestaoView.exibir(); }
         });
 
         inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "logout");
@@ -85,15 +95,12 @@ public class MenuPrincipalView extends JFrame {
         loginView.exibir();
     }
 
-    // Método corrigido: removidas as aspas duplas da declaração do parâmetro
     private JButton criarBotaoMenu(String texto, boolean habilitado, java.awt.event.ActionListener acao) {
         JButton btn = new JButton(texto);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 18));
         btn.setEnabled(habilitado);
         btn.addActionListener(acao);
-        if (!habilitado) {
-            btn.setToolTipText("Acesso Restrito");
-        }
+        if (!habilitado) btn.setToolTipText("Acesso Restrito");
         return btn;
     }
 }
