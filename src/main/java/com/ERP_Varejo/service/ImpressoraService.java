@@ -11,79 +11,113 @@ import java.util.List;
 @Service
 public class ImpressoraService {
 
-    public void imprimirViaUSB(List<Venda> vendas, LocalDateTime inicio, LocalDateTime fim) throws Exception {
-        PrintService service = PrintServiceLookup.lookupDefaultPrintService();
-        
-        if (service == null) {
-            throw new Exception("Impressora não detectada.");
-        }
+    private final int LARGURA_BOBINA = 42; // Definido para evitar cortes
+    private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-        // Ajustamos para 42 colunas para garantir que nada saia cortado nas bordas
-        int largura = 42; 
-        String conteudo = gerarCupomFechamento(vendas, inicio, fim, largura);
-        
-        // Comandos ESC/POS nativos: Reset + Texto + Corte
-        char esc = (char) 27;
-        String reset = esc + "@"; 
-        String comandoCorte = "\n\n\n\n" + esc + "m"; 
-        String documentoFinal = reset + conteudo + comandoCorte;
-
-        // O SEGREDO PARA TIRAR O DELAY E O CORTE:
-        // Enviamos BYTES DIRETOS. Isso ignora as margens de página do Windows.
-        byte[] bytes = documentoFinal.getBytes("CP850"); 
-        DocFlavor flavor = DocFlavor.BYTE_ARRAY.AUTOSENSE;
-        Doc doc = new SimpleDoc(bytes, flavor, null);
-        
-        DocPrintJob job = service.createPrintJob();
-        job.print(doc, null);
-        
-        System.out.println("Impressão enviada em modo RAW (Sem delay e sem cortes)");
+    // --- RELATÓRIO SIMPLIFICADO ---
+    public void imprimirRelatorioSimplificado(List<Venda> vendas, LocalDateTime inicio, LocalDateTime fim) {
+        new Thread(() -> {
+            StringBuilder sb = iniciarCabecalho("RELATORIO SIMPLIFICADO", inicio, fim);
+            
+            BigDecimal[] totais = calcularTotais(vendas);
+            adicionarFechamento(sb, totais[0], totais[1], totais[2], totais[3]);
+            
+            sb.append("\n").append(centralizar("Fim do Relatorio Simplificado", LARGURA_BOBINA)).append("\n");
+            enviarParaImpressora(sb.toString());
+        }).start();
     }
 
-    private String gerarCupomFechamento(List<Venda> vendas, LocalDateTime inicio, LocalDateTime fim, int largura) {
-        StringBuilder cupom = new StringBuilder();
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    // --- RELATÓRIO DETALHADO ---
+    public void imprimirRelatorioDetalhado(List<Venda> vendas, LocalDateTime inicio, LocalDateTime fim) {
+        new Thread(() -> {
+            StringBuilder sb = iniciarCabecalho("RELATORIO DETALHADO", inicio, fim);
 
-        cupom.append(centralizar("CASA DOS FOGÕES", largura)).append("\n");
-        cupom.append(centralizar("AUDITORIA DE CAIXA", largura)).append("\n");
-        cupom.append("-".repeat(largura)).append("\n");
-        cupom.append("Inicio: ").append(inicio.format(dtf)).append("\n");
-        cupom.append("Fim   : ").append(fim.format(dtf)).append("\n");
-        cupom.append("-".repeat(largura)).append("\n\n");
+            BigDecimal tPix = BigDecimal.ZERO, tDeb = BigDecimal.ZERO, tCre = BigDecimal.ZERO, tDin = BigDecimal.ZERO;
 
-        BigDecimal tPix = BigDecimal.ZERO, tDeb = BigDecimal.ZERO, tCre = BigDecimal.ZERO, tDin = BigDecimal.ZERO;
+            for (Venda v : vendas) {
+                String hora = v.getDataVenda().format(DateTimeFormatter.ofPattern("HH:mm"));
+                sb.append(String.format("VENDA: %-6d  HORA: %s\n", v.getId(), hora));
+                sb.append("FORMA PGTO: ").append(v.getMetodoPagamento()).append("\n");
+                sb.append(formatarLinha("SUBTOTAL:", v.getTotalVenda(), LARGURA_BOBINA));
+                sb.append(".".repeat(LARGURA_BOBINA)).append("\n");
 
+                switch (v.getMetodoPagamento()) {
+                    case PIX -> tPix = tPix.add(v.getTotalVenda());
+                    case DEBITO -> tDeb = tDeb.add(v.getTotalVenda());
+                    case CREDITO -> tCre = tCre.add(v.getTotalVenda());
+                    case DINHEIRO -> tDin = tDin.add(v.getTotalVenda());
+                }
+            }
+
+            adicionarFechamento(sb, tPix, tDeb, tCre, tDin);
+            sb.append("\n").append(centralizar("Fim do Relatorio Detalhado", LARGURA_BOBINA)).append("\n");
+            enviarParaImpressora(sb.toString());
+        }).start();
+    }
+
+    // --- MÉTODOS AUXILIARES DE FORMATAÇÃO E HARDWARE ---
+
+    private StringBuilder iniciarCabecalho(String titulo, LocalDateTime inicio, LocalDateTime fim) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(centralizar("CASA DOS FOGÕES", LARGURA_BOBINA)).append("\n");
+        sb.append(centralizar(titulo, LARGURA_BOBINA)).append("\n");
+        sb.append("-".repeat(LARGURA_BOBINA)).append("\n");
+        sb.append("Periodo: ").append(inicio.format(dtf)).append("\n");
+        sb.append("Ate    : ").append(fim.format(dtf)).append("\n");
+        sb.append("-".repeat(LARGURA_BOBINA)).append("\n\n");
+        return sb;
+    }
+
+    private void adicionarFechamento(StringBuilder sb, BigDecimal pix, BigDecimal deb, BigDecimal cre, BigDecimal din) {
+        sb.append("\n").append("=".repeat(LARGURA_BOBINA)).append("\n");
+        sb.append(centralizar("FECHAMENTO POR OPERACAO", LARGURA_BOBINA)).append("\n");
+        sb.append("=".repeat(LARGURA_BOBINA)).append("\n");
+        sb.append(formatarLinha("TOTAL DINHEIRO:", din, LARGURA_BOBINA));
+        sb.append(formatarLinha("TOTAL PIX:", pix, LARGURA_BOBINA));
+        sb.append(formatarLinha("TOTAL DEBITO:", deb, LARGURA_BOBINA));
+        sb.append(formatarLinha("TOTAL CREDITO:", cre, LARGURA_BOBINA));
+        sb.append("-".repeat(LARGURA_BOBINA)).append("\n");
+        BigDecimal total = pix.add(deb).add(cre).add(din);
+        sb.append(formatarLinha("TOTAL GERAL:", total, LARGURA_BOBINA));
+    }
+
+    private BigDecimal[] calcularTotais(List<Venda> vendas) {
+        BigDecimal p = BigDecimal.ZERO, d = BigDecimal.ZERO, c = BigDecimal.ZERO, din = BigDecimal.ZERO;
         for (Venda v : vendas) {
             switch (v.getMetodoPagamento()) {
-                case PIX -> tPix = tPix.add(v.getTotalVenda());
-                case DEBITO -> tDeb = tDeb.add(v.getTotalVenda());
-                case CREDITO -> tCre = tCre.add(v.getTotalVenda());
-                case DINHEIRO -> tDin = tDin.add(v.getTotalVenda());
+                case PIX -> p = p.add(v.getTotalVenda());
+                case DEBITO -> d = d.add(v.getTotalVenda());
+                case CREDITO -> c = c.add(v.getTotalVenda());
+                case DINHEIRO -> din = din.add(v.getTotalVenda());
             }
         }
-
-        cupom.append(formatarLinha("PIX:", tPix, largura));
-        cupom.append(formatarLinha("DEBITO:", tDeb, largura));
-        cupom.append(formatarLinha("CREDITO:", tCre, largura));
-        cupom.append(formatarLinha("DINHEIRO:", tDin, largura));
-        cupom.append("-".repeat(largura)).append("\n");
-        
-        BigDecimal total = tPix.add(tDeb).add(tCre).add(tDin);
-        cupom.append(formatarLinha("TOTAL GERAL:", total, largura));
-        
-        cupom.append("\n\n").append(centralizar("Fim do Relatorio", largura)).append("\n");
-
-        return cupom.toString();
+        return new BigDecimal[]{p, d, c, din};
     }
 
-    private String centralizar(String t, int l) {
-        int e = (l - t.length()) / 2;
-        return " ".repeat(Math.max(0, e)) + t;
+    private void enviarParaImpressora(String conteudo) {
+        try {
+            PrintService service = PrintServiceLookup.lookupDefaultPrintService();
+            if (service == null) return;
+
+            char esc = (char) 27;
+            String documento = (esc + "@") + conteudo + ("\n\n\n\n\n" + esc + "m");
+            byte[] bytes = documento.getBytes("CP850");
+            
+            DocPrintJob job = service.createPrintJob();
+            job.print(new SimpleDoc(bytes, DocFlavor.BYTE_ARRAY.AUTOSENSE, null), null);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    private String formatarLinha(String label, BigDecimal v, int l) {
-        String vStr = String.format("R$ %.2f", v);
-        int esp = l - label.length() - vStr.length();
+    private String centralizar(String texto, int largura) {
+        int espacos = (largura - texto.length()) / 2;
+        return " ".repeat(Math.max(0, espacos)) + texto;
+    }
+
+    private String formatarLinha(String label, BigDecimal valor, int largura) {
+        String vStr = String.format("R$ %.2f", valor);
+        int esp = largura - label.length() - vStr.length();
         return label + " ".repeat(Math.max(0, esp)) + vStr + "\n";
     }
 }

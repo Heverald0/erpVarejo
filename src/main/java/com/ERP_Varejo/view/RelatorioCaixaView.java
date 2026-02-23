@@ -29,14 +29,16 @@ public class RelatorioCaixaView extends JFrame {
     private JTable tabelaVendas;
     private DefaultTableModel modelTabela;
     private JTextField txtDataInicio, txtDataFim;
+    private JComboBox<String> comboTipoRelatorio;
     private JLabel lblTotalGeral, lblTotalPix, lblTotalDebito, lblTotalCredito, lblTotalDinheiro;
 
     public void exibir() {
-        setTitle("Auditoria de Caixa (D-3) - CasadosFogões");
+        setTitle("Auditoria de Caixa - CasadosFogões");
         setSize(1000, 600);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
+        // --- PAINEL DE FILTROS (NORTE) ---
         JPanel pnlFiltros = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
         pnlFiltros.setBackground(new Color(236, 240, 241));
 
@@ -45,16 +47,25 @@ public class RelatorioCaixaView extends JFrame {
 
         txtDataInicio = new JTextField(hoje, 10);
         txtDataFim = new JTextField(hoje, 10);
+        
         JButton btnConsultar = new JButton("CONSULTAR");
-        JButton btnImprimir = new JButton("IMPRIMIR NO PERIFERICO");
+        
+        // Seletor de Tipo de Relatório
+        String[] tipos = {"Simplificado", "Detalhado"};
+        comboTipoRelatorio = new JComboBox<>(tipos);
+        
+        // Botão Imprimir com texto simplificado
+        JButton btnImprimir = new JButton("IMPRIMIR");
         btnImprimir.setBackground(new Color(46, 204, 113));
         btnImprimir.setForeground(Color.WHITE);
 
         pnlFiltros.add(new JLabel("Início:")); pnlFiltros.add(txtDataInicio);
         pnlFiltros.add(new JLabel("Fim:")); pnlFiltros.add(txtDataFim);
         pnlFiltros.add(btnConsultar);
+        pnlFiltros.add(new JLabel("Tipo:")); pnlFiltros.add(comboTipoRelatorio);
         pnlFiltros.add(btnImprimir);
 
+        // --- TABELA DE VENDAS (CENTRO) ---
         String[] colunas = {"ID", "Data/Hora", "Pagamento", "Operador", "Total"};
         modelTabela = new DefaultTableModel(colunas, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
@@ -62,6 +73,7 @@ public class RelatorioCaixaView extends JFrame {
         tabelaVendas = new JTable(modelTabela);
         add(new JScrollPane(tabelaVendas), BorderLayout.CENTER);
 
+        // --- PAINEL DE TOTAIS (SUL) ---
         JPanel pnlTotais = new JPanel(new GridLayout(1, 5, 10, 10));
         pnlTotais.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         pnlTotais.setBackground(new Color(44, 62, 80));
@@ -74,9 +86,11 @@ public class RelatorioCaixaView extends JFrame {
 
         pnlTotais.add(lblTotalPix); pnlTotais.add(lblTotalDebito); 
         pnlTotais.add(lblTotalCredito); pnlTotais.add(lblTotalDinheiro); pnlTotais.add(lblTotalGeral);
+        
         add(pnlFiltros, BorderLayout.NORTH);
         add(pnlTotais, BorderLayout.SOUTH);
 
+        // --- EVENTOS ---
         btnConsultar.addActionListener(e -> carregarRelatorio());
 
         btnImprimir.addActionListener(e -> {
@@ -86,14 +100,26 @@ public class RelatorioCaixaView extends JFrame {
                 LocalDateTime fim = LocalDate.parse(txtDataFim.getText(), format).atTime(LocalTime.MAX);
                 List<Venda> vendas = vendaService.buscarVendasParaRelatorio(inicio, fim);
                 
-                impressoraService.imprimirViaUSB(vendas, inicio, fim);
-                JOptionPane.showMessageDialog(this, "Relatorio enviado para a impressora padrao!");
+                if (vendas.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Não há vendas no período para imprimir.");
+                    return;
+                }
+
+                // Verifica o tipo selecionado no JComboBox
+                if (comboTipoRelatorio.getSelectedItem().equals("Detalhado")) {
+                    impressoraService.imprimirRelatorioDetalhado(vendas, inicio, fim);
+                } else {
+                    // Note: Certifique-se de que o método simplificado existe na sua ImpressoraService
+                    impressoraService.imprimirRelatorioSimplificado(vendas, inicio, fim);
+                }
+                
+                JOptionPane.showMessageDialog(this, "Relatório enviado para a impressora!");
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Erro de Impressão: " + ex.getMessage());
             }
         });
 
-
+        // Configuração do ESC para fechar
         this.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "esc");
         this.getRootPane().getActionMap().put("esc", new AbstractAction() {
             @Override public void actionPerformed(ActionEvent e) { dispose(); }
@@ -113,11 +139,19 @@ public class RelatorioCaixaView extends JFrame {
             LocalDateTime inicio = LocalDate.parse(txtDataInicio.getText(), dtf).atStartOfDay();
             LocalDateTime fim = LocalDate.parse(txtDataFim.getText(), dtf).atTime(LocalTime.MAX);
             List<Venda> vds = vendaService.buscarVendasParaRelatorio(inicio, fim);
+            
             modelTabela.setRowCount(0);
             BigDecimal tG = BigDecimal.ZERO, tP = BigDecimal.ZERO, tD = BigDecimal.ZERO, tC = BigDecimal.ZERO, tDi = BigDecimal.ZERO;
 
             for (Venda v : vds) {
-                modelTabela.addRow(new Object[]{v.getId(), v.getDataVenda().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")), v.getMetodoPagamento(), v.getUsuario().getNome(), String.format("R$ %.2f", v.getTotalVenda())});
+                modelTabela.addRow(new Object[]{
+                    v.getId(), 
+                    v.getDataVenda().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")), 
+                    v.getMetodoPagamento(), 
+                    v.getUsuario().getNome(), 
+                    String.format("R$ %.2f", v.getTotalVenda())
+                });
+                
                 tG = tG.add(v.getTotalVenda());
                 switch (v.getMetodoPagamento()) {
                     case PIX -> tP = tP.add(v.getTotalVenda());
@@ -126,9 +160,15 @@ public class RelatorioCaixaView extends JFrame {
                     case DINHEIRO -> tDi = tDi.add(v.getTotalVenda());
                 }
             }
-            lblTotalPix.setText(String.format("PIX: R$ %.2f", tP)); lblTotalDebito.setText(String.format("DÉBITO: R$ %.2f", tD));
-            lblTotalCredito.setText(String.format("CRÉDITO: R$ %.2f", tC)); lblTotalDinheiro.setText(String.format("DINHEIRO: R$ %.2f", tDi));
+            
+            lblTotalPix.setText(String.format("PIX: R$ %.2f", tP)); 
+            lblTotalDebito.setText(String.format("DÉBITO: R$ %.2f", tD));
+            lblTotalCredito.setText(String.format("CRÉDITO: R$ %.2f", tC)); 
+            lblTotalDinheiro.setText(String.format("DINHEIRO: R$ %.2f", tDi));
             lblTotalGeral.setText(String.format("TOTAL: R$ %.2f", tG));
-        } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Erro: " + ex.getMessage()); }
+            
+        } catch (Exception ex) { 
+            JOptionPane.showMessageDialog(this, "Erro ao carregar: " + ex.getMessage()); 
+        }
     }
 }
